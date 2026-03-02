@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="0">
+        <record id="demo_partner_xyz" model="res.partner">
+            <field name="name">Sinh viên Test Postman</field>
+            <field name="ma_sinh_vien">xyz</field>
+        </record>
+
+        <record id="demo_master_payment" model="hp.thanh.toan.sinh.vien">
+            <field name="partner_id" ref="demo_partner_xyz"/>
+            <field name="unit_id" eval="1"/>
+            <field name="ngay_thanh_toan">2026-02-28</field>
+        </record>
+
+        <record id="demo_line_1" model="hp.tt.sv.chi.tiet">
+            <field name="parent_id" ref="demo_master_payment"/>
+            <field name="dot_thu_id">HK1_2025</field>
+            <field name="product_id" search="[]" model="product.product" limit="1"/>
+            <field name="so_tien">5000000</field>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data>
+        <record id="log_sync_receive_payment_search_view" model="ir.ui.view">
+            <field name="name">log_sync_receive_payment_search_view</field>
+            <field name="model">log.sync.receive.payment</field>
+            <field name="arch" type="xml">
+                <search>
+                    <field name="params" string="Params" filter_domain="[('params', 'ilike', self)]"/>
+                </search>
+            </field>
+        </record>
+        <record id="log_sync_receive_payment_tree_view" model="ir.ui.view">
+            <field name="name">log_sync_receive_payment_tree_view</field>
+            <field name="model">log.sync.receive.payment</field>
+            <field name="arch" type="xml">
+                <tree create="0" delete="0" default_order='create_date desc'>
+                    <field name="code"/>
+                    <field name="params" optional="hide"/>
+                    <field name="ip_address" optional="hide"/>
+                    <field name="create_date"/>
+                    <field name="date_done"/>
+                    <field name="state" widget="badge"
+                           decoration-success="state == 'done'"
+                           decoration-muted="state == 'draft'"
+                           decoration-info="state == 'queue'"
+                           decoration-danger="state == 'fail'"/>
+                </tree>
+            </field>
+        </record>
+
+        <record id="log_sync_receive_payment_form_view" model="ir.ui.view">
+            <field name="name">log_sync_receive_payment_form_view</field>
+            <field name="model">log.sync.receive.payment</field>
+            <field name="arch" type="xml">
+                <form create="0" delete="0" edit="0">
+                    <header>
+                        <field name="state" widget="statusbar" statusbar_visible="done" readonly="1"/>
+                    </header>
+                    <sheet>
+                        <group>
+                            <group>
+                                <field name="code"/>
+                            </group>
+                            <group>
+                                <field name="create_date"/>
+                                <field name="date_done"/>
+                            </group>
+                        </group>
+                        <notebook>
+                            <page string="Params">
+                                <field name="params"/>
+                            </page>
+                            <page string="Response">
+                                <field name="response"/>
+                            </page>
+                        </notebook>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+        <record id="log_sync_receive_payment_action" model="ir.actions.act_window">
+            <field name="name">Log Sync Receive Payment</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">log.sync.receive.payment</field>
+            <field name="view_mode">tree,form</field>
+            <field name="search_view_id" ref="log_sync_receive_payment_search_view"/>
+        </record>
+        <menuitem id="log_sync_receive_payment_menu"
+                  name="Log nhận thông tin thanh toán"
+                  action="log_sync_receive_payment_action"
+                  parent="ev_api_sync_base.log_sync_receive_menu"
+                  sequence="10"/>
+    </data>
+</odoo>

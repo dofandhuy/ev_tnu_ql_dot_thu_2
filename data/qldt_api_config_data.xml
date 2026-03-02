@@ -1,0 +1,9 @@
+<odoo>
+    <data noupdate="1">
+        <record id="api_payment_config" model="config.api">
+            <field name="name">Xác nhận phản hồi thanh toán</field>
+            <field name="code">/api/v1/qldt/payment</field>
+            <field name="is_token_required" eval="False"/>
+        </record>
+    </data>
+</odoo>

@@ -1,0 +1,4 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_log_sync_receive_payment,log.sync.receive.payment,model_log_sync_receive_payment,base.group_user,1,1,1,1
+access_hp_thanh_toan_sinh_vien,hp.thanh.toan.sinh.vien,model_hp_thanh_toan_sinh_vien,base.group_user,1,1,1,1
+access_hp_tt_sv_chi_tiet,hp.tt.sv.chi.tiet,model_hp_tt_sv_chi_tiet,base.group_user,1,1,1,1
