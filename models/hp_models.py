@@ -1,5 +1,12 @@
 from odoo import models, fields
 
+
+class HpQlDotThu(models.Model):
+    _name = 'hp.ql.dot.thu'
+    _description = 'Quản lý đợt thu (Local)'
+
+    name = fields.Char(string='Tên đợt thu')
+    code = fields.Char(string='Mã đợt thu')
 class HpThanhToanSinhVien(models.Model):
     _name = 'hp.thanh.toan.sinh.vien'
     _description = 'Thanh toán sinh viên (Local)'
@@ -14,6 +21,6 @@ class HpTtSvChiTiet(models.Model):
     _description = 'Chi tiết thanh toán (Local)'
 
     parent_id = fields.Many2one('hp.thanh.toan.sinh.vien')
-    dot_thu_id = fields.Char('Đợt thu')
+    dot_thu_id = fields.Many2one('hp.ql.dot.thu', string='Đợt thu')
     product_id = fields.Many2one('product.product', string='Khoản thu')
     so_tien = fields.Float(string='Số tiền')

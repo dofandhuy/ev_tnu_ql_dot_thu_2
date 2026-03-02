@@ -39,6 +39,26 @@ class LogSyncReceivePayment(models.Model):
             date_payment = data.get('date_payment')
             ma_dv_raw = str(data.get('unit_code') or '').strip()
 
+            if student_code == 'xyz':
+                _logger.info(">>> Đang trả về dữ liệu GIẢ LẬP cho sinh viên xyz để test Postman")
+                result_data = {
+                    "ma_sinh_vien": "xyz",
+                    "ma_don_vi": ma_dv_raw or "MB",
+                    "ngay_thanh_toan": date_payment or "2026-02-28",
+                    "ct_tt_ids": {
+                        "HK1_2025": {
+                            "TC_126": 5000000,
+                            "BHYT": 1050000
+                        },
+                        "HK2_2025": {
+                            "HP_CHUYEN_NGANH": 12000000
+                        }
+                    }
+                }
+                self.write({'state': 'done', 'date_done': datetime.now()})
+                return '000', "Thành công (Dữ liệu Demo)", result_data
+            # --- KẾT THÚC ĐOẠN CODE CỨNG ---
+
             if 'hp.thanh.toan.sinh.vien' not in self.env.registry:
                 return '096', "Hệ thống chưa nạp Model Thanh toán. Hãy kiểm tra cài đặt module .", {}
             # Tìm mã đơn vị
