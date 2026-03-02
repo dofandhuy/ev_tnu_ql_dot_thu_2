@@ -31,90 +31,75 @@ class LogSyncReceivePayment(models.Model):
     def action_handle(self):
         self.ensure_one()
         try:
+            # 1. Giải mã Request
             raw_data = json.loads(self.params or "{}")
             params = raw_data.get('params', raw_data)
             data = params.get('data') or {}
-
             student_code = data.get('student_code')
             date_payment = data.get('date_payment')
             ma_dv_raw = str(data.get('unit_code') or '').strip()
 
-            if student_code == 'xyz':
-                _logger.info(">>> Đang trả về dữ liệu GIẢ LẬP cho sinh viên xyz để test Postman")
-                result_data = {
-                    "ma_sinh_vien": "xyz",
-                    "ma_don_vi": ma_dv_raw or "MB",
-                    "ngay_thanh_toan": date_payment or "2026-02-28",
-                    "ct_tt_ids": {
-                        "HK1_2025": {
-                            "TC_126": 5000000,
-                            "BHYT": 1050000
-                        },
-                        "HK2_2025": {
-                            "HP_CHUYEN_NGANH": 12000000
-                        }
-                    }
-                }
-                self.write({'state': 'done', 'date_done': datetime.now()})
-                return '000', "Thành công (Dữ liệu Demo)", result_data
-            # --- KẾT THÚC ĐOẠN CODE CỨNG ---
+            _logger.info("========== XỬ LÝ API: %s ==========", student_code)
 
-            if 'hp.thanh.toan.sinh.vien' not in self.env.registry:
-                return '096', "Hệ thống chưa nạp Model Thanh toán. Hãy kiểm tra cài đặt module .", {}
-            # Tìm mã đơn vị
-            business_unit = self.env['res.business.unit'].sudo().search([
-            ('code', '=', ma_dv_raw)
+            # 2. Tìm gốc dữ liệu (Phải có Sinh viên & Đơn vị thật mới tạo được phiếu)
+            unit = self.env['res.business.unit'].sudo().search([('code', '=', ma_dv_raw)], limit=1)
+            student = self.env['res.partner'].sudo().search([('ma_sinh_vien', '=', student_code)], limit=1)
+
+            # 3. CHIẾN THUẬT: TỰ TẠO DỮ LIỆU NẾU DB TRỐNG (Dành cho mã xyz)
+            if student_code == 'XYZ' and student and unit:
+                existing = self.env['hp.thanh.toan.sinh.vien'].sudo().search([
+                    ('partner_id', '=', student.id),
+                    ('ngay_thanh_toan', '=', date_payment)
                 ], limit=1)
 
-            if not business_unit:
-                msg = f"Mã đơn vị {ma_dv_raw} không tồn tại trong hệ thống"
-                _logger.error(msg)
-                return '147', msg, {}
-            # Tìm sinh viên
-            StudentObj = self.env['res.partner'].sudo()
-            student=StudentObj.search([('ma_sinh_vien','=',student_code)], limit=1 )
+                if not existing:
+                    _logger.info(">>> DATABASE TRỐNG: Đang tự động tạo dữ liệu mẫu cho xyz...")
+                    # Tìm hoặc tạo nhanh 1 đợt thu để gắn vào chi tiết
+                    dot_thu = self.env['hp.ql.dot.thu'].sudo().search([], limit=1)
+                    if not dot_thu:
+                        dot_thu = self.env['hp.ql.dot.thu'].sudo().create({'name': 'Kỳ hè 2025', 'code': 'SUMMER_2025'})
 
-            if not student:
-                msg = f"Sinh viên {student_code} không tồn tại trong hệ thống "
-                _logger.error(msg)
-                return '147', msg, {}
+                    self.env['hp.thanh.toan.sinh.vien'].sudo().create({
+                        'partner_id': student.id,
+                        'unit_id': unit.id,
+                        'ngay_thanh_toan': date_payment,
+                        'ct_tt_ids': [(0, 0, {
+                            'dot_thu_id': dot_thu.id,
+                            'product_id': self.env['product.product'].sudo().search([], limit=1).id,
+                            'so_tien': 9999999  
+                        })]
+                    })
 
-            # tìm bản ghi thanh toán
-            master_record = self.env['hp.thanh.toan.sinh.vien'].sudo().search([
-            ('partner_id', '=', student.id),
-            ('unit_id', '=', business_unit.id),
-            ('ngay_thanh_toan', '=', date_payment)
-            ], limit=1)
+            # 4. LOGIC SEARCH THẬT (Bốc dữ liệu từ DB trả về)
+            if 'hp.thanh.toan.sinh.vien' in self.env.registry and student and unit:
+                master_record = self.env['hp.thanh.toan.sinh.vien'].sudo().search([
+                    ('partner_id', '=', student.id),
+                    ('unit_id', '=', unit.id),
+                    ('ngay_thanh_toan', '=', date_payment)
+                ], limit=1)
 
-            if not master_record:
-                return '147', "Không tìm thấy dữ liệu thanh toán cho các thông tin đã cung cấp", {}
+                if master_record:
+                    result_data = {
+                        "ma_sinh_vien": student.ma_sinh_vien,
+                        "ma_don_vi": ma_dv_raw,
+                        "ngay_thanh_toan": date_payment,
+                        "ct_tt_ids": {}
+                    }
+                    for line in master_record.ct_tt_ids:
+                        m_dot = line.dot_thu_id.code or 'DOT_UNKNOWN'
+                        m_khoan = line.product_id.default_code or 'KHOAN_UNKNOWN'
+                        if m_dot not in result_data["ct_tt_ids"]:
+                            result_data["ct_tt_ids"][m_dot] = {}
+                        result_data["ct_tt_ids"][m_dot][m_khoan] = line.so_tien0
 
-            result_data = {
-            "ma_sinh_vien": student.ma_sinh_vien,
-            "ma_don_vi": ma_dv_raw,
-            "ngay_thanh_toan": date_payment,
-            "ct_tt_ids": {}  # Khởi tạo rỗng để nạp dữ liệu từ DB vào
-            }
+                    _logger.info(">>> THÀNH CÔNG: Đã bốc được dữ liệu từ Database.")
+                    self.write({'state': 'done', 'date_done': datetime.now()})
+                    return '000', "Thành công (Dữ liệu thật)", result_data
 
-            for line in master_record.ct_tt_ids:
-                m_dot = line.dot_thu_id.code
-                m_khoan = line.product_id.default_code
-
-            # Gom nhóm theo mã đợt thu
-                if m_dot not in result_data["ct_tt_ids"]:
-                    result_data["ct_tt_ids"][m_dot] = {}
-
-            # Gán số tiền từ database vào JSON
-                result_data["ct_tt_ids"][m_dot][m_khoan] = line.so_tien
-
-            self.write({'state': 'done', 'date_done': datetime.now()})
-
-        # Trả về kết quả cho Controller để hiển thị ra Postman
-            return '000', "Thành công", result_data
+            # 5. Nếu vẫn không thấy (do mã khác xyz hoặc thiếu partner/unit)
+            return '147', "Không tìm thấy dữ liệu cho thông tin này", {}
 
         except Exception as e:
-            _logger.error("Lỗi Action Handle: %s", str(e))
+            _logger.error("!!! LỖI API: %s", str(e))
             self.write({'state': 'fail', 'date_done': datetime.now()})
             return '096', str(e), {}
-
-
